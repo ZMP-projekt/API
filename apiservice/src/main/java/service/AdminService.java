@@ -1,18 +1,29 @@
 package service;
 
-import dto.AdminUserDTO;
-import model.Role;
-import repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import dto.AdminUserDTO;
+import dto.TrainerDTO;
+import lombok.RequiredArgsConstructor;
+import model.Role;
+import model.TrainerProfile;
+import model.User;
+import repository.TrainerProfileRepository;
+import repository.UserRepository;
+
+
 
 @Service
 @RequiredArgsConstructor
 public class AdminService {
 
     private final UserRepository userRepository;
+    private final TrainerProfileRepository trainerProfileRepository;
 
     public List<AdminUserDTO> getAllUsers() {
         return userRepository.findAll().stream().map(user -> {
@@ -24,14 +35,46 @@ public class AdminService {
         }).collect(Collectors.toList());
     }
 
-    public void changeUserRole(Long userId, Role newRole) {
-        userRepository.findById(userId).ifPresent(user -> {
-            user.setRole(newRole);
-            userRepository.save(user);
-        });
-    }
 
     public void deleteUser(Long userId) {
         userRepository.deleteById(userId);
     }
+
+
+    @Transactional
+    public void updateUserRole(Long userId, Role newRole) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Użytkownik nie znaleziony"));
+
+        user.setRole(newRole);
+        userRepository.save(user);
+
+            if (newRole == Role.ROLE_TRAINER) {
+            if (!trainerProfileRepository.existsById(userId)) {
+                TrainerProfile profile = new TrainerProfile();
+                profile.setUser(user);
+            
+                profile.setSpecialization("Do uzupełnienia");
+                profile.setBio("Brak opisu");
+                
+                trainerProfileRepository.save(profile);
+            }
+        }
+
+    }
+
+    @Transactional
+    public void overrideTrainerData(Long userId, TrainerDTO dto) {
+    TrainerProfile profile = trainerProfileRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("Ten użytkownik nie jest trenerem!"));
+
+    profile.setSpecialization(dto.getSpecialization());
+    profile.setBio(dto.getBio());
+    profile.setPhotoUrl(dto.getPhotoUrl());
+    profile.setUpdatedAt(LocalDateTime.now());
+
+    trainerProfileRepository.save(profile);
+}
+
+
 }

@@ -31,7 +31,7 @@ public class AuthService {
 
         userRepository.save(user);
 
-        String token = jwtService.generateToken(user.getEmail());
+        String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
         return new AuthResponse(token);
     }
 
@@ -43,7 +43,7 @@ public class AuthService {
             throw new RuntimeException("Błędne hasło");
         }
 
-        String token = jwtService.generateToken(user.getEmail());
+        String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
         return new AuthResponse(token);
     }
 }

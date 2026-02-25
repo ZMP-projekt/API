@@ -18,13 +18,19 @@ public class JwtService {
         return extractClaim(token, Claims::getSubject);
     }
 
-    public String generateToken(String username) {
+    public String generateToken(String username, String role) {
         return Jwts.builder()
                 .subject(username)
+                .claim("role", role)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // Token ważny 24h
                 .signWith(getSigningKey())
                 .compact();
+    }
+
+    
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> (String) claims.get("role"));
     }
 
     public boolean isTokenValid(String token, String username) {
