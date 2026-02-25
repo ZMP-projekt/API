@@ -29,6 +29,13 @@ System zarządzania siłownią zbudowany w architekturze REST API.
 * `GET /api/admin/users` - Lista wszystkich zarejestrowanych osób.
 * `PATCH /api/admin/users/{id}/role` - Nadanie uprawnień (np. zmiana na ADMIN).
 * `DELETE /api/admin/users/{id}` - Usunięcie konta użytkownika.
+* `PUT /api/admin/trainers/{id}` - Dodawanie Trenera. 
+
+
+
+### Moduł Trainer 
+* `PUT /api/trainers/me` - Profil Trenera (widoczny tylko dla niego - ograniczenie hasRole TRAINER.
+* `GET /api/trainers` - Lista trenerów, endpoint ogólnodostępny. 
 
 ## 📝 Do wdrożenia (Roadmap Security)
 - [ ] **Refresh Tokens:** Dłuższa żywotność sesji bez konieczności ciągłego logowania.
