@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import dto.TrainerDTO;
+import exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import model.TrainerProfile;
 import model.User;
@@ -23,7 +24,7 @@ public class TrainerService {
     @Transactional
     public void updateProfile(String email, TrainerDTO dto) {
     User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new RuntimeException("Użytkownik nie znaleziony"));
+            ..orElseThrow(() -> new ResourceNotFoundException("Użytkownik o emailu " + email + " nie istnieje w bazie."));
 
     TrainerProfile profile = trainerRepository.findById(user.getId())
             .orElseGet(() -> {
@@ -47,7 +48,7 @@ public class TrainerService {
 
     public TrainerDTO getProfileByEmail(String email) {
     User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new RuntimeException("Użytkownik nie znaleziony"));
+            .orElseThrow(() -> new ResourceNotFoundException("Użytkownik o emailu " + email + " nie istnieje w bazie."));
 
     TrainerProfile profile = trainerRepository.findById(user.getId())
             .orElseThrow(() -> new RuntimeException("Profil trenera nie istnieje"));
