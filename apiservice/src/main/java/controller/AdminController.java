@@ -2,7 +2,6 @@ package controller;
 
 import java.util.List;
 
-import org.apache.tomcat.util.net.openssl.ciphers.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -15,10 +14,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import dto.AdminUserDTO;
+import dto.AuditLogDTO;
 import dto.TrainerDTO;
 import lombok.RequiredArgsConstructor;
 import model.Role;
 import service.AdminService;
+import service.AuditLogService;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -27,6 +28,7 @@ import service.AdminService;
 public class AdminController {
 
     private final AdminService adminService;
+    private final AuditLogService auditLogService;
 
     @GetMapping("/users")
     public ResponseEntity<List<AdminUserDTO>> getAllUsers() {
@@ -54,6 +56,9 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
-
+    @GetMapping("/audit-logs")
+    public ResponseEntity<List<AuditLogDTO>> getAuditLogs() {
+    return ResponseEntity.ok(auditLogService.getAllLogs());
+}
     
 }

@@ -7,8 +7,6 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -38,6 +36,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/exercises").hasAnyRole("TRAINER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/trainers").permitAll() 
                         .requestMatchers("/api/trainers/me").hasRole("TRAINER")
+                        .requestMatchers(HttpMethod.GET, "/api/trainers/me").hasRole("TRAINER")
+                        .requestMatchers(HttpMethod.PUT, "/api/trainers/me").hasRole("TRAINER")
                         .requestMatchers("/api/users/**").authenticated()
                         .requestMatchers("/api/test-auth").permitAll()
                         .anyRequest().authenticated()

@@ -24,6 +24,7 @@ public class AdminService {
 
     private final UserRepository userRepository;
     private final TrainerProfileRepository trainerProfileRepository;
+    private final AuditLogService auditLogService;
 
     public List<AdminUserDTO> getAllUsers() {
         return userRepository.findAll().stream().map(user -> {
@@ -38,6 +39,7 @@ public class AdminService {
 
     public void deleteUser(Long userId) {
         userRepository.deleteById(userId);
+        auditLogService.logAction("System", "DELETE_USER", "Usunięto użytkownika o ID: " + userId);
     }
 
 
@@ -58,6 +60,7 @@ public class AdminService {
                 profile.setBio("Brak opisu");
                 
                 trainerProfileRepository.save(profile);
+                auditLogService.logAction("System", "CREATE_TRAINER_PROFILE", "Utworzono profil trenera dla użytkownika o ID: " + userId);
             }
         }
 
@@ -74,6 +77,7 @@ public class AdminService {
     profile.setUpdatedAt(LocalDateTime.now());
 
     trainerProfileRepository.save(profile);
+    auditLogService.logAction("System", "UPDATE_TRAINER_PROFILE", "Zaktualizowano dane trenera o ID: " + userId);
 }
 
 
