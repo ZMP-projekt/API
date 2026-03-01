@@ -15,7 +15,7 @@ System zarządzania siłownią zbudowany w architekturze REST API.
 3. **Role-Based Access Control (RBAC):** - `@PreAuthorize` na poziomie metod i kontrolerów.
    - Podział na role: `USER`, `ADMIN`.
 4. **Zmienne Środowiskowe:** Wrażliwe dane (URL bazy, hasła) wstrzykiwane poza kodem źródłowym.
-5. **CORS:** Skonfigurowana polityka dostępu dla wielu typów klientów (Web/Mobile/Desktop).
+
 
 ## 🚀 Wdrożone Endpointy
 ### Moduł Auth
@@ -36,6 +36,14 @@ System zarządzania siłownią zbudowany w architekturze REST API.
 ### Moduł Trainer 
 * `PUT /api/trainers/me` - Profil Trenera (widoczny tylko dla niego - ograniczenie hasRole TRAINER.
 * `GET /api/trainers` - Lista trenerów, endpoint ogólnodostępny. 
+* `GET /api/trainers/me` - pobieranie danych profilu trenera
+* `PUT /api/trainers/me` - aktualizacja danych profilu trenera - bio, specjalizacja itp
+
+### Moduł Membership & Access 
+* `POST /api/memberships/purchase` – Zakup karnetu (OPEN, NIGHT, STUDENT). Generuje wpis w audycie.
+* `GET /api/memberships/me` – Sprawdzenie statusu własnego karnetu (typ, data ważności).
+* `POST /api/access/check` – Wirtualna bramka (tez weryfikuje ważność i godziny dla karnetu NIGHT).
+
 
 ## 📝 Do wdrożenia (Roadmap Security)
 - [ ] **Refresh Tokens:** Dłuższa żywotność sesji bez konieczności ciągłego logowania.
