@@ -35,9 +35,10 @@ System zarządzania siłownią zbudowany w architekturze REST API.
 
 ### Moduł Trainer 
 * `PUT /api/trainers/me` - Profil Trenera (widoczny tylko dla niego - ograniczenie hasRole TRAINER.
+* `GET /api/trainers/me` - pobieranie danych profilu trenera.
 * `GET /api/trainers` - Lista trenerów, endpoint ogólnodostępny. 
-* `GET /api/trainers/me` - pobieranie danych profilu trenera
-* `PUT /api/trainers/me` - aktualizacja danych profilu trenera - bio, specjalizacja itp
+  
+
 
 ### Moduł Membership & Access 
 * `POST /api/memberships/purchase` – Zakup karnetu (OPEN, NIGHT, STUDENT). Generuje wpis w audycie.
