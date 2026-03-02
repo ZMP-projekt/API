@@ -1,16 +1,20 @@
 package service;
 
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import dto.AccessResponseDTO;
 import dto.MembershipDTO;
 import exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
-import model.*;
+import model.Membership;
+import model.MembershipType;
+import model.User;
 import repository.MembershipRepository;
 import repository.UserRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 @Service
 @RequiredArgsConstructor
@@ -46,24 +50,33 @@ public class MembershipService {
             String.format("Zakupiono karnet %s za %.2f zł", type, price));
     }
 
-    public MembershipDTO getUserMembership(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        return membershipRepository.findByUserId(user.getId())
-                .map(m -> {
-                    MembershipDTO dto = new MembershipDTO();
-                    dto.setType(m.getType());
-                    dto.setEndDate(m.getEndDate());
-                    dto.setActive(m.isActive());
-                    return dto;
-                }).orElseThrow(() -> new ResourceNotFoundException("Ten użytkownik nie posiada jeszcze żadnego karnetu."));
-    }
+  public MembershipDTO getUserMembership(String email) {
+    User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new ResourceNotFoundException("Użytkownik " + email + " nie istnieje."));
+    
+    return membershipRepository.findByUserId(user.getId())
+            .map(m -> {
+                MembershipDTO dto = new MembershipDTO();
+                dto.setType(m.getType());
+                dto.setEndDate(m.getEndDate());
+                dto.setActive(m.isActive());
+
+                double price = switch (m.getType()) {
+                    case OPEN -> 170.0;
+                    case NIGHT -> 80.0;
+                    case STUDENT -> 100.0;
+                };
+                dto.setPrice(price);
+
+                return dto;
+            })
+            .orElseThrow(() -> new ResourceNotFoundException("Ten użytkownik nie posiada jeszcze żadnego karnetu."));
+}
 
 
         public AccessResponseDTO checkAccess(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Użytkownik nie znaleziony"));
+              .orElseThrow(() -> new ResourceNotFoundException("Użytkownik " + email + " nie ma dostępu."));
 
         Membership membership = membershipRepository.findByUserId(user.getId())
                 .orElse(null);

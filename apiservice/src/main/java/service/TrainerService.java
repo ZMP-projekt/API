@@ -24,7 +24,7 @@ public class TrainerService {
     @Transactional
     public void updateProfile(String email, TrainerDTO dto) {
     User user = userRepository.findByEmail(email)
-            ..orElseThrow(() -> new ResourceNotFoundException("Użytkownik o emailu " + email + " nie istnieje w bazie."));
+            .orElseThrow(() -> new ResourceNotFoundException("Użytkownik o emailu " + email + " nie istnieje w bazie."));
 
     TrainerProfile profile = trainerRepository.findById(user.getId())
             .orElseGet(() -> {
