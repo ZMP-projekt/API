@@ -1,9 +1,12 @@
 package controller;
 
 
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import dto.UserDTO;
 import service.UserService;
@@ -27,8 +30,18 @@ private final UserService userService;
 
   @GetMapping("/test-auth")
 public String testAuth(Authentication auth) {
-    if (auth == null) return "Brak tokena!";
+    if (auth == null) return "Brak tokenu!";
     return "Zalogowany jako: " + auth.getName() + ", Twoja rola: " + auth.getAuthorities().toString();
 }
+
+@GetMapping("/search/first-name")
+    public ResponseEntity<List<UserDTO>> searchByFirstName(@RequestParam String name) {
+        return ResponseEntity.ok(userService.findUsersByFirstName(name));
+    }
+
+    @GetMapping("/search/last-name")
+    public ResponseEntity<List<UserDTO>> searchByLastName(@RequestParam String name) {
+        return ResponseEntity.ok(userService.findUsersByLastName(name));
+    }
 
 }
