@@ -12,8 +12,8 @@ import java.util.List;
 
 public interface GymClassRepository extends JpaRepository<GymClass, Long> {
     List<GymClass> findByStartTimeBetween(LocalDateTime start, LocalDateTime end);
-    
     List<GymClass> findByParticipantsContains(User user);
+    List<GymClass> findByTrainerAndStartTimeBetween(User trainer, LocalDateTime start, LocalDateTime end);
 
     @Query("SELECT COUNT(g) > 0 FROM GymClass g WHERE g.trainer.id = :trainerId " +
        "AND ((g.startTime < :endTime AND g.endTime > :startTime))")

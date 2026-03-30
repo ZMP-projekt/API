@@ -2,6 +2,7 @@ package controller;
 
 import dto.CreateClassRequest;
 import dto.GymClassDTO;
+import dto.UserDTO;
 import service.GymClassService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -61,6 +62,21 @@ public class GymClassController {
     public ResponseEntity<String> delete(@PathVariable Long id) {
     gymClassService.deleteClass(id);
     return ResponseEntity.ok("Zajęcia zostały odwołane.");
+}
+
+@GetMapping("/trainer")
+@PreAuthorize("hasRole('TRAINER')")
+@Operation(summary = "Mój grafik (Trener)", description = "Zwraca listę zajęć przypisanych do zalogowanego trenera na dany dzień.")
+public ResponseEntity<List<GymClassDTO>> getMyClasses(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date) {
+    return ResponseEntity.ok(gymClassService.getTrainerClassesForDay(date));
+}
+
+@GetMapping("/{id}/participants")
+@PreAuthorize("hasAuthority('TRAINER')")
+@Operation(summary = "Lista zapisanych osób", description = "Zwraca listę osób (imię, nazwisko, email) zapisanych na konkretne zajęcia.")
+public ResponseEntity<List<UserDTO>> getParticipants(@PathVariable Long id) {
+    return ResponseEntity.ok(gymClassService.getParticipants(id));
 }
 
 

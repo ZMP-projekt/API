@@ -1,13 +1,11 @@
 package service;
-
 import java.time.LocalDateTime;
 import java.util.List;
-
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-
 import dto.CreateClassRequest;
 import dto.GymClassDTO;
+import dto.UserDTO;
 import lombok.RequiredArgsConstructor;
 import model.GymClass;
 import model.User;
@@ -23,7 +21,7 @@ public class GymClassService {
     private final GymClassRepository gymClassRepository;
     private final UserRepository userRepository;
 
-    public List<GymClassDTO> getAllClassesForDay(LocalDateTime start) {
+    public List<GymClassDTO> getAllClassesForDay(LocalDateTime start) { //ogolny dostep do harmnogramu
         LocalDateTime end = start.plusDays(1);
         List<GymClass> classes = gymClassRepository.findByStartTimeBetween(start, end);
         
@@ -35,7 +33,7 @@ public class GymClassService {
                 .toList();
     }
 
-//dla usera
+    //dla usera
     public void bookClass(Long classId) {
         GymClass gymClass = gymClassRepository.findById(classId)
                 .orElseThrow(() -> new RuntimeException("Nie znaleziono zajęć o ID: " + classId));
@@ -126,7 +124,35 @@ public void rescheduleClass(Long classId, LocalDateTime newTime) {
     gymClassRepository.save(gymClass);
 }
 
-    private void validateTrainer(GymClass gymClass) {
+public List<GymClassDTO> getTrainerClassesForDay(LocalDateTime date) {
+    String email = SecurityContextHolder.getContext().getAuthentication().getName();
+    User trainer = userRepository.findByEmail(email).orElseThrow();
+    LocalDateTime startOfDay = date.toLocalDate().atStartOfDay();
+    LocalDateTime endOfDay = date.toLocalDate().atTime(23, 59, 59);
+    return gymClassRepository.findByTrainerAndStartTimeBetween(trainer, startOfDay, endOfDay)
+            .stream()
+            .map(gymClass -> mapToDTO(gymClass, trainer))
+            .toList();
+}
+
+public List<UserDTO> getParticipants(Long classId) {
+    GymClass gymClass = gymClassRepository.findById(classId)
+            .orElseThrow(() -> new RuntimeException("Nie znaleziono zajęć"));
+            validateTrainer(gymClass);
+
+            return gymClass.getParticipants().stream()
+            .map(user -> {
+                UserDTO dto = new UserDTO();
+                dto.setId(user.getId());
+                dto.setFirstName(user.getFirstName());
+                dto.setLastName(user.getLastName());
+                dto.setEmail(user.getEmail());
+                return dto;
+            })
+            .toList();
+}
+
+    private void validateTrainer(GymClass gymClass) {//sprawdzenie czy zalogowany user jest trenerem tego zajęcia
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email).orElseThrow();
 
