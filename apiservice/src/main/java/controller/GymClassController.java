@@ -1,19 +1,28 @@
 package controller;
 
-import dto.CreateClassRequest;
-import dto.GymClassDTO;
-import dto.UserDTO;
-import service.GymClassService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import dto.CreateClassRequest;
+import dto.GymClassDTO;
+import dto.UserDTO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import service.GymClassService;
 
 @RestController
 @RequestMapping("/api/classes")
@@ -33,7 +42,7 @@ public class GymClassController {
     @Operation(summary = "Pobierz grafik na konkretny dzień - format taki: 2026-03-29T00:00:00")
     @GetMapping
     public ResponseEntity<List<GymClassDTO>> getClasses(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date) {
+            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date) {
         return ResponseEntity.ok(gymClassService.getAllClassesForDay(date));
     }
 
@@ -52,7 +61,7 @@ public class GymClassController {
     @Operation(summary = "przeloz zajecia jako trener") 
     @PatchMapping("/{id}/reschedule")
     @PreAuthorize("hasRole('TRAINER')")
-    public ResponseEntity<String> reschedule(@PathVariable Long id, @RequestParam LocalDateTime newTime) {
+    public ResponseEntity<String> reschedule(@PathVariable Long id, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime newTime) {
     gymClassService.rescheduleClass(id, newTime);
     return ResponseEntity.ok("Zajęcia zostały przełożone.");
 }
@@ -68,14 +77,14 @@ public class GymClassController {
 @PreAuthorize("hasRole('TRAINER')")
 @Operation(summary = "Mój grafik (Trener)", description = "Zwraca listę zajęć przypisanych do zalogowanego trenera na dany dzień.")
 public ResponseEntity<List<GymClassDTO>> getMyClasses(
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date) {
+        @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date) {
     return ResponseEntity.ok(gymClassService.getTrainerClassesForDay(date));
 }
 
 @GetMapping("/{id}/participants")
-@PreAuthorize("hasAuthority('TRAINER')")
+@PreAuthorize("hasRole('TRAINER')")
 @Operation(summary = "Lista zapisanych osób", description = "Zwraca listę osób (imię, nazwisko, email) zapisanych na konkretne zajęcia.")
-public ResponseEntity<List<UserDTO>> getParticipants(@PathVariable Long id) {
+public ResponseEntity<List<UserDTO>> getParticipants(@PathVariable("id") Long id) {
     return ResponseEntity.ok(gymClassService.getParticipants(id));
 }
 

@@ -1,8 +1,10 @@
 package service;
 import java.time.LocalDateTime;
 import java.util.List;
+
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+
 import dto.CreateClassRequest;
 import dto.GymClassDTO;
 import dto.UserDTO;
@@ -117,10 +119,10 @@ public GymClassDTO createClass(CreateClassRequest request) {
 
 public void rescheduleClass(Long classId, LocalDateTime newTime) {
     GymClass gymClass = gymClassRepository.findById(classId).orElseThrow();
-    
     validateTrainer(gymClass);
-
+    long durationInMinutes = java.time.Duration.between(gymClass.getStartTime(), gymClass.getEndTime()).toMinutes();
     gymClass.setStartTime(newTime);
+    gymClass.setEndTime(newTime.plusMinutes(durationInMinutes));
     gymClassRepository.save(gymClass);
 }
 
