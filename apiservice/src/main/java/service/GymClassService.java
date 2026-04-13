@@ -22,6 +22,7 @@ public class GymClassService {
     private final GymClassRepository gymClassRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final AuditLogService auditLogService;
 
     public List<GymClassDTO> getAllClassesForDay(LocalDateTime start) {
         LocalDateTime end = start.plusDays(1);
@@ -59,6 +60,8 @@ public class GymClassService {
             String msg = "Nowy uczestnik: " + user.getFirstName() + " zapisał się na " + gymClass.getName();
             notificationService.sendToUser(trainer, msg);
         }
+        
+        auditLogService.logAction(user.getEmail(), "BOOKING", "Użytkownik zapisał się na zajęcia: " + gymClass.getName());
     } 
 
     public GymClassDTO createClass(CreateClassRequest request) {
@@ -112,15 +115,19 @@ public class GymClassService {
 
         gymClass.getParticipants().remove(user);
         gymClassRepository.save(gymClass);
+        auditLogService.logAction(user.getEmail(), "CANCEL_BOOKING", "Użytkownik anulował rezerwację na zajęcia: " + gymClass.getName());
+
     }
 
     public void rescheduleClass(Long classId, LocalDateTime newTime) {
         GymClass gymClass = gymClassRepository.findById(classId).orElseThrow();
         validateTrainer(gymClass);
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
         long durationInMinutes = java.time.Duration.between(gymClass.getStartTime(), gymClass.getEndTime()).toMinutes();
         gymClass.setStartTime(newTime);
         gymClass.setEndTime(newTime.plusMinutes(durationInMinutes));
         gymClassRepository.save(gymClass);
+        auditLogService.logAction(email, "RESCHEDULE", "Zmieniono termin zajęć ID: " + classId + " na " + newTime);
     }
 
     public List<GymClassDTO> getTrainerClassesForDay(LocalDateTime date) {
