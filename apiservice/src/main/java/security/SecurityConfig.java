@@ -50,6 +50,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/access/**").authenticated()
                         .requestMatchers("/api/classes/**").authenticated()
                         .requestMatchers("/api/users/test-auth").permitAll()
+                        .requestMatchers("/ws-gym/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
