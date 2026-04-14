@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Powiadomień Live - Panel Trenera</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
+        #log { border: 2px solid #333; height: 300px; overflow-y: scroll; padding: 10px; background: white; border-radius: 8px; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .message { color: blue; border-bottom: 1px solid #eee; padding: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>System Monitorowania Siłowni</h1>
+    <h3>Status: <span id="status">Rozłączono</span></h3>
+    <div id="log"></div>
+
+    <script>
+        // --- KONFIGURACJA ---
+        // 1. WKLEJ TUTAJ TOKEN (ZACZYNAJĄC OD Bearer ...)
+        const JWT_TOKEN = 'Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0cmVuZXJAZ3ltLnBsIiwicm9sZSI6IlJPTEVfVFJBSU5FUiIsImlhdCI6MTc3NjE1MTIxNywiZXhwIjoxNzc2MjM3NjE3fQ.rBkzAJvnsTomtFkOpBrp4-D_WTn4wn0ORVo1qcgw9KZ-Tb7wynwZH1z7porcs7n7';
+        
+        // 2. ADRES TWOJEGO ENDPOINTU (zgodnie z WebSocketConfig)
+        const socket = new SockJS('https://api-j6d6.onrender.com/ws-gym');
+        const stompClient = Stomp.over(socket);
+
+        const logDiv = document.getElementById('log');
+        const statusSpan = document.getElementById('status');
+
+        function appendLog(text, className) {
+            const p = document.createElement('p');
+            p.className = className;
+            p.innerText = `[${new Date().toLocaleTimeString()}] ${text}`;
+            logDiv.appendChild(p);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // Próba połączenia
+        console.log("Łączenie...");
+        appendLog("Próba nawiązania połączenia...", "");
+
+        // Nagłówek autoryzacji wysyłany w ramce CONNECT STOMP
+        const headers = {
+            'Authorization': JWT_TOKEN
+        };
+
+        stompClient.connect(headers, function (frame) {
+            statusSpan.innerText = "POŁĄCZONO";
+            statusSpan.className = "success";
+            appendLog("Sukces! Połączono z WebSocketem.", "success");
+
+            // SUBSKRYPCJA KANAŁU DLA ZALOGOWANEGO UŻYTKOWNIKA
+            // Spring automatycznie zamieni to na unikalny kanał dla Twojego maila
+            stompClient.subscribe('/user/queue/notifications', function (notification) {
+                appendLog("NOWE POWIADOMIENIE: " + notification.body, "message");
+            });
+
+        }, function (error) {
+            statusSpan.innerText = "BŁĄD";
+            statusSpan.className = "error";
+            appendLog("Błąd połączenia: " + error, "error");
+            console.error('STOMP Error:', error);
+        });
+    </script>
+</body>
+</html>

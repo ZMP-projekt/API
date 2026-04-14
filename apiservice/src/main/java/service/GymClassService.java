@@ -117,18 +117,32 @@ public class GymClassService {
         gymClassRepository.save(gymClass);
         auditLogService.logAction(user.getEmail(), "CANCEL_BOOKING", "Użytkownik anulował rezerwację na zajęcia: " + gymClass.getName());
 
+
+        User trainer = gymClass.getTrainer();
+         if (trainer != null) {
+        String msg = "Użytkownik " + user.getFirstName() + " zrezygnował z Twoich zajęć: " + gymClass.getName();
+        notificationService.sendToUser(trainer, msg);
+    }
     }
 
-    public void rescheduleClass(Long classId, LocalDateTime newTime) {
-        GymClass gymClass = gymClassRepository.findById(classId).orElseThrow();
-        validateTrainer(gymClass);
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        long durationInMinutes = java.time.Duration.between(gymClass.getStartTime(), gymClass.getEndTime()).toMinutes();
-        gymClass.setStartTime(newTime);
-        gymClass.setEndTime(newTime.plusMinutes(durationInMinutes));
-        gymClassRepository.save(gymClass);
-        auditLogService.logAction(email, "RESCHEDULE", "Zmieniono termin zajęć ID: " + classId + " na " + newTime);
+  public void rescheduleClass(Long classId, LocalDateTime newTime) {
+    GymClass gymClass = gymClassRepository.findById(classId).orElseThrow();
+    validateTrainer(gymClass);
+
+    LocalDateTime oldTime = gymClass.getStartTime(); 
+    String email = SecurityContextHolder.getContext().getAuthentication().getName();
+    long durationInMinutes = java.time.Duration.between(gymClass.getStartTime(), gymClass.getEndTime()).toMinutes();
+    
+    gymClass.setStartTime(newTime);
+    gymClass.setEndTime(newTime.plusMinutes(durationInMinutes));
+    gymClassRepository.save(gymClass);
+
+    String msg = "Zajęcia " + gymClass.getName() + " zostały przełożone z " + oldTime + " na " + newTime;
+    for (User participant : gymClass.getParticipants()) {
+        notificationService.sendToUser(participant, msg);
     }
+    auditLogService.logAction(email, "RESCHEDULE", "Zmieniono termin zajęć ID: " + classId + " na " + newTime);
+}
 
     public List<GymClassDTO> getTrainerClassesForDay(LocalDateTime date) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -170,6 +184,12 @@ public class GymClassService {
     public void deleteClass(Long classId) {
         GymClass gymClass = gymClassRepository.findById(classId).orElseThrow();
         validateTrainer(gymClass);
+
+        String msg = "Zajęcia " + gymClass.getName() + ", na które byłeś zapisany, zostały odwołane przez trenera.";
+         for (User participant : gymClass.getParticipants()) {
+        notificationService.sendToUser(participant, msg);
+    }
+
         gymClassRepository.delete(gymClass);
     }
 
