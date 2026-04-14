@@ -1,12 +1,15 @@
 package service;
 
 import java.time.LocalDateTime;
+
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+
+import dto.NotificationDTO;
 import lombok.RequiredArgsConstructor;
-import repository.NotificationRepository;
 import model.Notification;
 import model.User;
+import repository.NotificationRepository;
 
 
 @Service
@@ -25,12 +28,18 @@ public class NotificationService {
         notification.setRead(false);
         notificationRepository.save(notification);
 
-        // 2. Wysłanie "na żywo" przez WebSocket
-        // Marcin będzie słuchał na: /user/queue/notifications
-        messagingTemplate.convertAndSendToUser(
-                user.getEmail(), 
-                "/queue/notifications", 
-                message
-        );
+        NotificationDTO dto = new NotificationDTO(
+        notification.getId(),
+        notification.getContent(),
+        notification.getCreatedAt(),
+        notification.isRead()
+    );
+
+    messagingTemplate.convertAndSendToUser(
+        user.getEmail(), 
+        "/queue/notifications", 
+        dto
+    );
+    
     }
 }
