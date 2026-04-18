@@ -24,6 +24,10 @@ public class GymClass {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private int maxParticipants;
+
+    @ManyToOne
+    @JoinColumn(name = "location_id")
+    private GymLocation location;
     
     @ManyToMany
     @JoinTable(

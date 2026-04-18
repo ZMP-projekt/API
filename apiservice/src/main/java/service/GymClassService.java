@@ -2,6 +2,7 @@ package service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import dto.GymClassDTO;
 import dto.UserDTO;
 import lombok.RequiredArgsConstructor;
 import model.GymClass;
+import model.GymLocation;
 import model.User;
 import repository.GymClassRepository;
 import repository.UserRepository;
@@ -23,13 +25,26 @@ public class GymClassService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final AuditLogService auditLogService;
+    private final LocationService locationService;
 
-    public List<GymClassDTO> getAllClassesForDay(LocalDateTime start) {
+    private User getCurrentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email).orElse(null);
+    }
+
+    public List<GymClassDTO> getClassesByDate(LocalDateTime start) {
         LocalDateTime end = start.plusDays(1);
         List<GymClass> classes = gymClassRepository.findByStartTimeBetween(start, end);
-        
-        String currentEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-        User currentUser = userRepository.findByEmail(currentEmail).orElse(null);
+        User currentUser = getCurrentUser();
+
+        return classes.stream()
+                .map(gymClass -> mapToDTO(gymClass, currentUser))
+                .toList();
+    }
+
+    public List<GymClassDTO> getClassesByLocation(Long locationId) {
+        List<GymClass> classes = gymClassRepository.findByLocationId(locationId);
+        User currentUser = getCurrentUser();
 
         return classes.stream()
                 .map(gymClass -> mapToDTO(gymClass, currentUser))
@@ -40,16 +55,15 @@ public class GymClassService {
         GymClass gymClass = gymClassRepository.findById(classId)
                 .orElseThrow(() -> new RuntimeException("Nie znaleziono zajęć o ID: " + classId));
 
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
+        User user = getCurrentUser();
+        if (user == null) throw new RuntimeException("Użytkownik nie istnieje");
 
         if (gymClass.getParticipants().size() >= gymClass.getMaxParticipants()) {
-            throw new RuntimeException("Brak wolnych miejsc na te zajęcia!");
+            throw new RuntimeException("Brak wolnych miejsc!");
         }
 
         if (gymClass.getParticipants().contains(user)) {
-            throw new RuntimeException("Jesteś już zapisany na te zajęcia");
+            throw new RuntimeException("Jesteś już zapisany.");
         }
 
         gymClass.getParticipants().add(user);
@@ -57,127 +71,107 @@ public class GymClassService {
 
         User trainer = gymClass.getTrainer();
         if (trainer != null) {
-            String msg = "Nowy uczestnik: " + user.getFirstName() + " zapisał się na " + gymClass.getName();
-            notificationService.sendToUser(trainer, msg);
+            notificationService.sendToUser(trainer, "Nowy uczestnik: " + user.getFirstName() + " na " + gymClass.getName());
         }
         
-        auditLogService.logAction(user.getEmail(), "BOOKING", "Użytkownik zapisał się na zajęcia: " + gymClass.getName());
-    } 
+        auditLogService.logAction(user.getEmail(), "BOOKING", "Zapis na: " + gymClass.getName());
+    }
 
     public GymClassDTO createClass(CreateClassRequest request) {
         if (request.getStartTime().isBefore(LocalDateTime.now())) {
             throw new RuntimeException("Nie można utworzyć zajęć w przeszłości!");
         }
 
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User trainer = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Nie znaleziono trenera w bazie"));
+        User trainer = getCurrentUser();
+        if (trainer == null) throw new RuntimeException("Nie znaleziono trenera");
 
-        LocalDateTime endTime = (request.getEndTime() != null) 
-                ? request.getEndTime() 
-                : request.getStartTime().plusHours(1);
+        LocalDateTime endTime = (request.getEndTime() != null) ? request.getEndTime() : request.getStartTime().plusHours(1);
                 
-        boolean isOverlapping = gymClassRepository.existsOverlappingClass(
-                trainer.getId(), request.getStartTime(), endTime);
-
-        if (isOverlapping) {
+        if (gymClassRepository.existsOverlappingClass(trainer.getId(), request.getStartTime(), endTime)) {
             throw new RuntimeException("Masz już inne zajęcia w tym czasie!");
         }
-
+      
+        GymLocation location = locationService.getLocationById(request.getLocationId());
         GymClass newClass = new GymClass();
+
         newClass.setName(request.getName());
         newClass.setDescription(request.getDescription());
         newClass.setStartTime(request.getStartTime());
-        newClass.setTrainer(trainer);
-        newClass.setPersonalTraining(request.isPersonalTraining());
         newClass.setEndTime(endTime);
-
-        if (request.isPersonalTraining()) {
-            newClass.setMaxParticipants(1); 
-        } else {
-            newClass.setMaxParticipants(request.getMaxParticipants());
-        }
+        newClass.setTrainer(trainer);
+        newClass.setLocation(location);
+        newClass.setPersonalTraining(request.isPersonalTraining());
+        newClass.setMaxParticipants(request.isPersonalTraining() ? 1 : request.getMaxParticipants());
 
         GymClass savedClass = gymClassRepository.save(newClass);
+        auditLogService.logAction(trainer.getEmail(), "CREATE_CLASS", "Zajęcia: " + savedClass.getName() + " w: " + location.getName());
         return mapToDTO(savedClass, trainer);
     }
 
     public void cancelBooking(Long classId) {
-        GymClass gymClass = gymClassRepository.findById(classId)
-                .orElseThrow(() -> new RuntimeException("Nie znaleziono zajęć"));
-
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByEmail(email).orElseThrow();
+        GymClass gymClass = gymClassRepository.findById(classId).orElseThrow();
+        User user = getCurrentUser();
 
         if (!gymClass.getParticipants().contains(user)) {
-            throw new RuntimeException("Nie jesteś zapisany na te zajęcia");
+            throw new RuntimeException("Nie jesteś zapisany.");
         }
 
         gymClass.getParticipants().remove(user);
         gymClassRepository.save(gymClass);
-        auditLogService.logAction(user.getEmail(), "CANCEL_BOOKING", "Użytkownik anulował rezerwację na zajęcia: " + gymClass.getName());
+        auditLogService.logAction(user.getEmail(), "CANCEL_BOOKING", "Anulowano: " + gymClass.getName());
 
-
-        User trainer = gymClass.getTrainer();
-         if (trainer != null) {
-        String msg = "Użytkownik " + user.getFirstName() + " zrezygnował z Twoich zajęć: " + gymClass.getName();
-        notificationService.sendToUser(trainer, msg);
-    }
+        if (gymClass.getTrainer() != null) {
+            notificationService.sendToUser(gymClass.getTrainer(), user.getFirstName() + " zrezygnował z " + gymClass.getName());
+        }
     }
 
-  public void rescheduleClass(Long classId, LocalDateTime newTime) {
-    GymClass gymClass = gymClassRepository.findById(classId).orElseThrow();
-    validateTrainer(gymClass);
+    public void rescheduleClass(Long classId, LocalDateTime newTime) {
+        GymClass gymClass = gymClassRepository.findById(classId).orElseThrow();
+        validateTrainer(gymClass);
 
-    LocalDateTime oldTime = gymClass.getStartTime(); 
-    String email = SecurityContextHolder.getContext().getAuthentication().getName();
-    long durationInMinutes = java.time.Duration.between(gymClass.getStartTime(), gymClass.getEndTime()).toMinutes();
-    
-    gymClass.setStartTime(newTime);
-    gymClass.setEndTime(newTime.plusMinutes(durationInMinutes));
-    gymClassRepository.save(gymClass);
+        LocalDateTime oldTime = gymClass.getStartTime();
+        long duration = java.time.Duration.between(gymClass.getStartTime(), gymClass.getEndTime()).toMinutes();
+        
+        gymClass.setStartTime(newTime);
+        gymClass.setEndTime(newTime.plusMinutes(duration));
+        gymClassRepository.save(gymClass);
 
-    String msg = "Zajęcia " + gymClass.getName() + " zostały przełożone z " + oldTime + " na " + newTime;
-    for (User participant : gymClass.getParticipants()) {
-        notificationService.sendToUser(participant, msg);
+        String msg = "Zajęcia " + gymClass.getName() + " przełożone z " + oldTime + " na " + newTime;
+        gymClass.getParticipants().forEach(p -> notificationService.sendToUser(p, msg));
+        
+        auditLogService.logAction(getCurrentUser().getEmail(), "RESCHEDULE", "ID: " + classId + " na " + newTime);
     }
-    auditLogService.logAction(email, "RESCHEDULE", "Zmieniono termin zajęć ID: " + classId + " na " + newTime);
-}
 
     public List<GymClassDTO> getTrainerClassesForDay(LocalDateTime date) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User trainer = userRepository.findByEmail(email).orElseThrow();
-        LocalDateTime startOfDay = date.toLocalDate().atStartOfDay();
-        LocalDateTime endOfDay = date.toLocalDate().atTime(23, 59, 59);
-        return gymClassRepository.findByTrainerAndStartTimeBetween(trainer, startOfDay, endOfDay)
+        User trainer = getCurrentUser();
+        LocalDateTime start = date.toLocalDate().atStartOfDay();
+        LocalDateTime end = date.toLocalDate().atTime(23, 59, 59);
+        
+        return gymClassRepository.findByTrainerAndStartTimeBetween(trainer, start, end)
                 .stream()
-                .map(gymClass -> mapToDTO(gymClass, trainer))
+                .map(gc -> mapToDTO(gc, trainer))
                 .toList();
     }
 
     public List<UserDTO> getParticipants(Long classId) {
-        GymClass gymClass = gymClassRepository.findById(classId)
-                .orElseThrow(() -> new RuntimeException("Nie znaleziono zajęć"));
+        GymClass gymClass = gymClassRepository.findById(classId).orElseThrow();
         validateTrainer(gymClass);
-
         return gymClass.getParticipants().stream()
-                .map(user -> {
-                    UserDTO dto = new UserDTO();
-                    dto.setId(user.getId());
-                    dto.setFirstName(user.getFirstName());
-                    dto.setLastName(user.getLastName());
-                    dto.setEmail(user.getEmail());
-                    return dto;
-                })
-                .toList();
+            .map(u -> {
+                UserDTO dto = new UserDTO(); 
+                dto.setId(u.getId());       
+                dto.setFirstName(u.getFirstName());
+                dto.setLastName(u.getLastName());
+                dto.setEmail(u.getEmail());
+                return dto;
+            })
+            .collect(Collectors.toList());
     }
 
     private void validateTrainer(GymClass gymClass) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByEmail(email).orElseThrow();
-
+        User user = getCurrentUser();
         if (!gymClass.getTrainer().equals(user)) {
-            throw new RuntimeException("Nie masz uprawnień do zmiany tego zajęcia");
+            throw new RuntimeException("Brak uprawnień.");
         }
     }
 
@@ -185,24 +179,22 @@ public class GymClassService {
         GymClass gymClass = gymClassRepository.findById(classId).orElseThrow();
         validateTrainer(gymClass);
 
-        String msg = "Zajęcia " + gymClass.getName() + ", na które byłeś zapisany, zostały odwołane przez trenera.";
-         for (User participant : gymClass.getParticipants()) {
-        notificationService.sendToUser(participant, msg);
-    }
+        String msg = "Zajęcia " + gymClass.getName() + " zostały odwołane.";
+        gymClass.getParticipants().forEach(p -> notificationService.sendToUser(p, msg));
 
         gymClassRepository.delete(gymClass);
     }
 
     private GymClassDTO mapToDTO(GymClass gymClass, User currentUser) {
         GymClassDTO dto = new GymClassDTO();
-        dto.setPersonalTraining(gymClass.isPersonalTraining());
-        dto.setDescription(gymClass.getDescription());
-        dto.setEndTime(gymClass.getEndTime());
         dto.setId(gymClass.getId());
         dto.setName(gymClass.getName());
+        dto.setDescription(gymClass.getDescription());
         dto.setStartTime(gymClass.getStartTime());
+        dto.setEndTime(gymClass.getEndTime());
         dto.setMaxParticipants(gymClass.getMaxParticipants());
         dto.setCurrentParticipants(gymClass.getParticipants().size());
+        dto.setPersonalTraining(gymClass.isPersonalTraining());
 
         if (gymClass.getTrainer() != null) {
             dto.setTrainerName(gymClass.getTrainer().getFirstName() + " " + gymClass.getTrainer().getLastName());
@@ -210,6 +202,12 @@ public class GymClassService {
 
         if (currentUser != null) {
             dto.setUserEnrolled(gymClass.getParticipants().contains(currentUser));
+        }
+        
+        if (gymClass.getLocation() != null) {
+            dto.setLocationName(gymClass.getLocation().getName());
+            dto.setAddress(gymClass.getLocation().getAddress());
+            dto.setCity(gymClass.getLocation().getCity());
         }
 
         return dto;

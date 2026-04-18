@@ -14,4 +14,9 @@ public class GymClassDTO {
     private String description;
     private LocalDateTime endTime;
     private boolean isPersonalTraining;
+    private String locationName;
+    private String address;
+    private String city;
+    
+
 }
