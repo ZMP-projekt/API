@@ -17,6 +17,7 @@ public class GymClassDTO {
     private String locationName;
     private String address;
     private String city;
-    
+    private Double latitude;
+    private Double longitude;
 
 }

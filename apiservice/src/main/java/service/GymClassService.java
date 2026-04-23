@@ -195,6 +195,7 @@ public class GymClassService {
         dto.setMaxParticipants(gymClass.getMaxParticipants());
         dto.setCurrentParticipants(gymClass.getParticipants().size());
         dto.setPersonalTraining(gymClass.isPersonalTraining());
+        
 
         if (gymClass.getTrainer() != null) {
             dto.setTrainerName(gymClass.getTrainer().getFirstName() + " " + gymClass.getTrainer().getLastName());
@@ -208,6 +209,8 @@ public class GymClassService {
             dto.setLocationName(gymClass.getLocation().getName());
             dto.setAddress(gymClass.getLocation().getAddress());
             dto.setCity(gymClass.getLocation().getCity());
+            dto.setLatitude(gymClass.getLocation().getLatitude());
+            dto.setLongitude(gymClass.getLocation().getLongitude());
         }
 
         return dto;
